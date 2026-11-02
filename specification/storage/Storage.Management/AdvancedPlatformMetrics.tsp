@@ -98,7 +98,7 @@ model AdvancedPlatformMetricsRuleProperties {
   /**
    * The metrics requested by the caller. If omitted in a create or update request, the service enables all metrics supported by the selected rule type.
    */
-  @added(Versions.v2026_09_01)
+  @added(Versions.v2026_12_01)
   metricsToEmit?: MetricsEmitted[];
 
   /**
