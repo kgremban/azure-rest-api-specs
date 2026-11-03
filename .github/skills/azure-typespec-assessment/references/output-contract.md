@@ -199,6 +199,10 @@ performed. Semantic intents, Azure Guidelines, and Documentation Completeness
 retain their independently derived statuses. In mixed-project assessments,
 the blocker is project-scoped and available compatibility results remain
 visible, yielding partial rather than erased coverage where applicable.
+The same isolation applies within a project: an unresolved generic instance
+remains a potential limit, but independently resolved deterministic candidates
+are still judged. Confirmed findings plus a blocker produce a failed verdict
+with partial coverage rather than an unknown verdict or erased findings.
 
 ## HTML
 

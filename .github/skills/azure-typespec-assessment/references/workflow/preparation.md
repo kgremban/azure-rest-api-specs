@@ -95,6 +95,11 @@ change discovery, project discovery, local-import boundaries, Semantic intent
 scope, and reported `changedFiles` remain restricted to the selected service
 roots.
 
+The existing revision-local TCGC compiler pass runs through the assessment
+adapter. It emits the normal `tcgc-output.yaml` and a small provenance sidecar
+from the same SDK context, before TCGC removes raw compiler template arguments.
+Do not add a second compile or copy provenance from the active checkout.
+
 For a new API version, plan the normal comparison as
 `head @ previousVersion -> head @ targetVersion`. If the historical version is
 not projectable from head, preserve the existing-project classification,

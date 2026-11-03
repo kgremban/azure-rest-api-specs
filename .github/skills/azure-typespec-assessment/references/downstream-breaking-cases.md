@@ -41,7 +41,10 @@ validated inferred candidates when present:
 Use only `candidateId`, `decision`, `severity` when approved, and `rationale`.
 Do not add UI fields, candidates, or affected-method claims to this schema.
 Assembly restores facts and links. Preserve supported blockers; rejection is
-not proof of complete coverage.
+not proof of complete coverage. Judge each candidate from its own referenced
+evidence. Do not reject an otherwise supported candidate merely because a
+different model, method, or generic instance has an identity blocker; retain
+that blocker separately as a coverage limit.
 
 Write rationale as **concrete before/after change -> existing SDK use affected
 -> consequence** in one or two short sentences, normally at most 40 words.

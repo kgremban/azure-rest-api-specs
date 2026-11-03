@@ -1207,6 +1207,80 @@ void test("mapped hunks remain blocked when deterministic analysis is blocked", 
   assert.equal(input.semanticReviewUnits[0].inferenceRequired, false);
 });
 
+void test("retains mapped candidates when an unrelated project blocker limits coverage", () => {
+  const input = buildModelInputFromFixture({
+    manifest: {
+      comparison: {
+        mergeBaseCommit: "base",
+        headCommit: "head",
+        baseRef: "origin/main",
+        workingTree: {},
+      },
+      projects: [{ id: "p", path: "specification/widget" }],
+      blockers: [],
+    },
+    sourceIndex: {
+      sourceChanges: [
+        {
+          id: "source-1",
+          path: "main.tsp",
+          hunks: [{ id: "hunk-1", lines: ["-  tags?: Record<string>;"] }],
+          declarations: [],
+        },
+      ],
+    },
+    semantic: {
+      status: "ready",
+      facts: {},
+      reviewUnits: [
+        {
+          id: "semantic-1",
+          projectId: "p",
+          sourceChangeIds: ["source-1"],
+          hunkIds: ["hunk-1"],
+          declarationIds: [],
+          operations: [],
+        },
+      ],
+      blockers: [],
+    },
+    rest: {
+      status: "ready",
+      facts: {
+        "rest-before": { id: "rest-before" },
+        "rest-after": { id: "rest-after" },
+      },
+      candidates: [
+        {
+          id: "rest-1",
+          sourceChangeIds: ["source-1"],
+          hunkIds: ["hunk-1"],
+          declarationIds: [],
+          evidenceFactIds: ["rest-before", "rest-after"],
+        },
+      ],
+      blockers: [],
+    },
+    downstream: {
+      status: "ready",
+      facts: {},
+      candidates: [],
+      blockers: [
+        {
+          code: "downstream-identity-unresolved",
+          projectId: "p",
+          message: "A different generic model is ambiguous.",
+        },
+      ],
+    },
+  });
+
+  const coverage = deterministicCoverage(input.semanticReviewUnits[0]);
+  assert.equal(coverage.classifications[0].status, "candidate-generated");
+  assert.deepEqual(coverage.classifications[0].restCandidateIds, ["rest-1"]);
+  assert.deepEqual(coverage.classifications[0].downstreamCandidateIds, []);
+});
+
 void test("project-scoped baseline blockers prevent inference without erasing other projects", () => {
   const input = buildModelInputFromFixture({
     manifest: {

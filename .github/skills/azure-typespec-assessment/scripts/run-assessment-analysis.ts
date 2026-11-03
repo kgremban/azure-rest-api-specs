@@ -969,7 +969,10 @@ function candidateHunks(
   declarationsByHunk: Map<string, SourceDeclaration[]>,
   operationsByHunk: Map<string, InternalSemanticOperation[]>,
 ) {
-  const matched: Set<string> = new Set();
+  const allowedHunks = new Set(_unit.hunkIds ?? []);
+  const matched: Set<string> = new Set(
+    (candidate.hunkIds ?? []).filter((hunkId) => allowedHunks.has(hunkId)),
+  );
   const candidateOperations = new Set(candidate.operationIds ?? []);
   for (const [hunkId, operations] of operationsByHunk) {
     if (operations.some((operation) => candidateOperations.has(operation.operationId))) {
@@ -1076,20 +1079,6 @@ function deterministicCoverage({
     const projectIds = new Set(unit.projectIds ?? (unit.projectId ? [unit.projectId] : []));
     const projectBlocked = (blockers: PreparationBlocker[]) =>
       blockers.some((blocker) => blocker.projectId && projectIds.has(blocker.projectId));
-    if (
-      rest.status === "blocked" ||
-      downstream.status === "blocked" ||
-      projectBlocked(rest.blockers) ||
-      projectBlocked(downstream.blockers)
-    ) {
-      return {
-        hunkId,
-        status: "blocked",
-        reason: "required-deterministic-analysis-blocked",
-        restCandidateIds: [],
-        downstreamCandidateIds: [],
-      };
-    }
     const gapReason = inferenceGapReason(source, hunkId);
     if (gapReason) {
       return {
@@ -1107,6 +1096,20 @@ function deterministicCoverage({
         reason: "mapped-deterministic-candidate",
         restCandidateIds,
         downstreamCandidateIds,
+      };
+    }
+    if (
+      rest.status === "blocked" ||
+      downstream.status === "blocked" ||
+      projectBlocked(rest.blockers) ||
+      projectBlocked(downstream.blockers)
+    ) {
+      return {
+        hunkId,
+        status: "blocked",
+        reason: "required-deterministic-analysis-blocked",
+        restCandidateIds: [],
+        downstreamCandidateIds: [],
       };
     }
     if (declarationsByHunk.has(hunkId) || operationsByHunk.has(hunkId)) {

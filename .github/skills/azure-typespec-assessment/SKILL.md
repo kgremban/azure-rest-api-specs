@@ -62,6 +62,9 @@ Do not substitute a `file:` URL or only return filesystem paths.
 - Treat a completed search with no governing guidance as `no-applicable-guidance`; count it as assessed and do not create a blocker. Reserve `not-assessed` for an incomplete or blocked Azure Guidelines assessment.
 - Check documentation deterministically from compiler results only for newly added operation, model, enum, and interface declarations. A declaration is complete when the compiler returns a nonempty effective document, including inherited documentation. Missing or empty documentation creates a finding with the exact TypeSpec declaration. Never compare documentation text with code or send documentation to the Agent.
 - Report Azure Guidelines and Documentation Completeness independently with explicit coverage. Documentation with no eligible newly added declarations is `not-applicable`; unavailable compiler evidence remains `not-assessed`.
+- Judge each REST and downstream candidate from its own evidence. An unrelated
+  project or generic-identity blocker limits coverage but does not justify
+  rejecting an otherwise supported candidate.
 - Overall safety covers REST and downstream SDK impact only.
 - After successful materialization, run one guarded invocation of `finalize-assessment.ts --work <work-directory>`. Do not separately assemble, validate, and render. Finalization requires validated `assessment.json` and `assessment.html`; user-facing completion additionally requires the served report link described above. `model-input.json`, the Agent index, filesystem paths without the link, or a partial blocker is not completion.
 - Retain blockers as **Potential limits** in the report appendix and stop after assessment. Do not author fixes or remediate TypeSpec.
