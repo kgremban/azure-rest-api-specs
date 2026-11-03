@@ -252,6 +252,11 @@ File: `preparation-manifest.json`
           "apiVersion": "2026-01-01-preview",
           "reason": "newest-added-version|affected-existing-version|unversioned"
         },
+        "baselineAvailability": {
+          "status": "available|unavailable",
+          "reason": "not-projectable-from-head",
+          "message": "Historical API version ... cannot be projected from the head revision; cross-commit comparison was not performed."
+        },
         "addedVersions": ["2026-01-01-preview"],
         "available": {
           "base": ["2025-01-01"],
@@ -391,6 +396,21 @@ Version-aware REST classification:
 - In `new-api-version` mode, baseline-to-target wire differences describe
   cross-version migration compatibility between the selected previous and new
   API-version projections.
+- The normal comparison compiles both projections from the head revision. If
+  the historical version cannot be projected from head, retain the
+  `new-api-version` plan and `existing` project classification, mark
+  `baselineAvailability.reason` as `not-projectable-from-head`, and compile
+  only the head target. Never substitute a base-revision projection.
+- This unavailable-baseline case reuses the established target-only execution
+  path used by new projects, but not its compatibility semantics. Semantic
+  intents still use the real base-to-head TypeSpec diff and target artifacts;
+  Azure Guidelines and Documentation Completeness continue independently.
+  REST, downstream SDK impact, and safety remain `not-assessed` with unknown,
+  blocked coverage and the explicit no-cross-commit reason.
+- Target-only facts do not establish that an operation was historically absent.
+  Projection-blocked hunks remain blocked and cannot generate inferred
+  compatibility, no-impact, or bypass findings. Project-scoped blockers do not
+  erase available results for other projects.
 - Substantive differences remain REST breaking candidates. Do not suppress
   them merely because the target version is newly published.
 - Exclude only a proven singleton `api-version` selector literal change when
@@ -1910,6 +1930,10 @@ File: `assessment.json`
         "commit": "head-sha",
         "apiVersion": "2026-01-01-preview",
         "reason": "newest-added-version|affected-existing-version|unversioned"
+      },
+      "baselineAvailability": {
+        "status": "available|unavailable",
+        "reason": "not-projectable-from-head"
       }
     }
   ],

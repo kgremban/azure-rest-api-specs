@@ -199,13 +199,13 @@ export function selectApiVersionPair({
       ? "previous-latest-stable"
       : "previous-latest-preview";
   const mode = addedCurrentVersions.length ? "new-api-version" : "existing-api-version";
-  const baselineSourceRevision =
-    mode === "new-api-version" && current.versions.includes(baselineVersion) ? "current" : "base";
+  const baselineProjectableFromHead =
+    mode !== "new-api-version" || current.versions.includes(baselineVersion);
   return {
     mode,
     baseline: {
-      sourceRevision: baselineSourceRevision,
-      commit: baselineSourceRevision === "current" ? headCommit : baseCommit,
+      sourceRevision: mode === "new-api-version" ? "current" : "base",
+      commit: mode === "new-api-version" ? headCommit : baseCommit,
       apiVersion: baselineVersion,
       reason: baselineReason,
     },
@@ -215,6 +215,19 @@ export function selectApiVersionPair({
       apiVersion: currentVersion,
       reason: mode === "new-api-version" ? "newest-added-version" : "affected-existing-version",
     },
+    ...(mode === "new-api-version"
+      ? {
+          baselineAvailability: baselineProjectableFromHead
+            ? { status: "available" as const }
+            : {
+                status: "unavailable" as const,
+                reason: "not-projectable-from-head" as const,
+                message:
+                  `Historical API version ${baselineVersion} cannot be projected from the head revision; ` +
+                  "cross-commit comparison was not performed.",
+              },
+        }
+      : {}),
     // Transitional aliases for readers that have not yet moved to comparison roles.
     base: baselineVersion,
     current: currentVersion,

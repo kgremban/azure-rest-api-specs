@@ -1207,6 +1207,93 @@ void test("mapped hunks remain blocked when deterministic analysis is blocked", 
   assert.equal(input.semanticReviewUnits[0].inferenceRequired, false);
 });
 
+void test("project-scoped baseline blockers prevent inference without erasing other projects", () => {
+  const input = buildModelInputFromFixture({
+    manifest: {
+      comparison: {
+        mergeBaseCommit: "base",
+        headCommit: "head",
+        baseRef: "origin/main",
+        workingTree: {},
+      },
+      projects: [
+        { id: "blocked", path: "specification/blocked" },
+        { id: "available", path: "specification/available" },
+      ],
+      blockers: [],
+    },
+    sourceIndex: {
+      sourceChanges: [
+        {
+          id: "source-blocked",
+          path: "blocked.tsp",
+          hunks: [{ id: "hunk-blocked", lines: ["+op getBlocked(): Widget;"] }],
+          declarations: [],
+        },
+        {
+          id: "source-available",
+          path: "available.tsp",
+          hunks: [{ id: "hunk-available", lines: ["+op getAvailable(): Widget;"] }],
+          declarations: [],
+        },
+      ],
+    },
+    semantic: {
+      status: "ready",
+      facts: {},
+      reviewUnits: [
+        {
+          id: "semantic-blocked",
+          projectId: "blocked",
+          sourceChangeIds: ["source-blocked"],
+          hunkIds: ["hunk-blocked"],
+          declarationIds: [],
+          operations: [{ operationId: "Blocked_Get", hunkIds: ["hunk-blocked"] }],
+        },
+        {
+          id: "semantic-available",
+          projectId: "available",
+          sourceChangeIds: ["source-available"],
+          hunkIds: ["hunk-available"],
+          declarationIds: [],
+          operations: [{ operationId: "Available_Get", hunkIds: ["hunk-available"] }],
+        },
+      ],
+      blockers: [],
+    },
+    rest: {
+      status: "ready",
+      facts: {},
+      candidates: [],
+      blockers: [
+        {
+          code: "historical-baseline-not-projectable-from-head",
+          projectId: "blocked",
+          message: "Cross-commit comparison was not performed.",
+        },
+      ],
+    },
+    downstream: {
+      status: "ready",
+      facts: {},
+      candidates: [],
+      blockers: [
+        {
+          code: "historical-baseline-not-projectable-from-head",
+          projectId: "blocked",
+          message: "Cross-commit comparison was not performed.",
+        },
+      ],
+    },
+  });
+
+  const blocked = deterministicCoverage(input.semanticReviewUnits[0]);
+  const available = deterministicCoverage(input.semanticReviewUnits[1]);
+  assert.equal(blocked.classifications[0].status, "blocked");
+  assert.equal(input.semanticReviewUnits[0].inferenceRequired, false);
+  assert.notEqual(available.classifications[0].status, "blocked");
+});
+
 void test("model input retains facts relevant to inference hunks", () => {
   const widgetFact: AssessmentFact = {
     id: "sdk-fact-widget",

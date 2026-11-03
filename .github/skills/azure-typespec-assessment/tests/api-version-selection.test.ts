@@ -170,6 +170,9 @@ void test("selects a newly added head version and the latest stable base version
         apiVersion: "2026-01-01-preview",
         reason: "newest-added-version",
       },
+      baselineAvailability: {
+        status: "available",
+      },
       base: "2025-01-01",
       current: "2026-01-01-preview",
       baseReason: "previous-latest-stable",
@@ -183,7 +186,7 @@ void test("selects a newly added head version and the latest stable base version
   );
 });
 
-void test("uses the base revision when the previous version is absent from the head enum", () => {
+void test("marks the planned head baseline unavailable instead of comparing across commits", () => {
   const base = extractApiVersions([
     source(`
   v2026_01_20_preview: "2026-01-20-preview",
@@ -204,9 +207,16 @@ void test("uses the base revision when the previous version is absent from the h
   });
 
   assert.equal(pair.mode, "new-api-version");
-  assert.equal(pair.baseline.sourceRevision, "base");
-  assert.equal(pair.baseline.commit, "base-sha");
+  assert.equal(pair.baseline.sourceRevision, "current");
+  assert.equal(pair.baseline.commit, "head-sha");
   assert.equal(pair.baseline.apiVersion, "2026-05-01-preview");
+  assert.ok("baselineAvailability" in pair);
+  assert.deepEqual(pair.baselineAvailability, {
+    status: "unavailable",
+    reason: "not-projectable-from-head",
+    message:
+      "Historical API version 2026-05-01-preview cannot be projected from the head revision; cross-commit comparison was not performed.",
+  });
   assert.equal(pair.target.sourceRevision, "current");
   assert.equal(pair.target.commit, "head-sha");
   assert.equal(pair.target.apiVersion, "2026-10-01-preview");

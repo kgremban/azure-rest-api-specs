@@ -188,6 +188,18 @@ not create a blocker. `not-assessed` is reserved for missing evidence,
 retrieval failures, blocked Semantic analysis, or otherwise incomplete
 the Azure Guidelines assessment.
 
+An existing project whose planned historical `new-api-version` baseline cannot
+be projected from head remains an existing project and retains its comparison
+metadata with `baselineAvailability.reason: not-projectable-from-head`. Its
+REST and downstream dimensions, and therefore safety, are `not-assessed` with
+`verdict: unknown` and `coverage: blocked` when no other project supplies
+assessed compatibility evidence. The blocker must state that the historical
+version cannot be projected from head and that no cross-commit comparison was
+performed. Semantic intents, Azure Guidelines, and Documentation Completeness
+retain their independently derived statuses. In mixed-project assessments,
+the blocker is project-scoped and available compatibility results remain
+visible, yielding partial rather than erased coverage where applicable.
+
 ## HTML
 
 `assessment.html` must show comparison identity, overall finding count with a

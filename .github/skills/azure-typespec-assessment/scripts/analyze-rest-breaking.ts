@@ -540,12 +540,22 @@ export function analyzeRestBreaking(options: {
   const candidates: BreakingCandidate[] = [];
 
   const blockers: PreparationBlocker[] = [];
-  let analyzedProjects = 0;
+  const analyzedProjectIds: string[] = [];
   for (const project of [...(manifest.projects ?? [])].sort((left, right) =>
     left.id.localeCompare(right.id),
   )) {
     if (project.classification === "new" || project.artifactComparison?.mode === "new-project") {
-      analyzedProjects += 1;
+      analyzedProjectIds.push(project.id);
+      continue;
+    }
+    if (project.artifactComparison?.baselineAvailability?.status === "unavailable") {
+      blockers.push({
+        code: "historical-baseline-not-projectable-from-head",
+        projectId: project.id,
+        message:
+          project.artifactComparison.baselineAvailability.message ??
+          "The historical API version cannot be projected from the head revision; cross-commit REST comparison was not performed.",
+      });
       continue;
     }
     const baseArtifact = project.artifacts?.baseline?.autorest ?? project.artifacts?.base?.autorest;
@@ -610,7 +620,7 @@ export function analyzeRestBreaking(options: {
             "Their effective compatibility cannot be established from incomplete contract evidence.",
         });
       }
-      analyzedProjects += 1;
+      analyzedProjectIds.push(project.id);
     } catch (error) {
       blockers.push({
         code: "autorest-contract-unsupported",
@@ -623,7 +633,8 @@ export function analyzeRestBreaking(options: {
 
   const result: BreakingAnalysis = {
     schemaVersion: 1,
-    status: analyzedProjects ? "ready" : "blocked",
+    status: analyzedProjectIds.length ? "ready" : "blocked",
+    analyzedProjectIds,
     facts: Object.fromEntries(
       Object.entries(facts).sort(([left], [right]) => left.localeCompare(right)),
     ),

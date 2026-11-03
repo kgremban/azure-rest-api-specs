@@ -492,15 +492,11 @@ export function validateAssessment(assessment: AssessmentOutput | LegacyAssessme
     }
     if (
       comparison.mode === "new-api-version" &&
-      !(
-        (comparison.baseline?.sourceRevision === "current" &&
-          comparison.baseline?.commit === assessment.comparison.headCommit) ||
-        (comparison.baseline?.sourceRevision === "base" &&
-          comparison.baseline?.commit === assessment.comparison.baseCommit)
-      )
+      (comparison.baseline?.sourceRevision !== "current" ||
+        comparison.baseline?.commit !== assessment.comparison.headCommit)
     ) {
       errors.push(
-        `New-version artifact comparison ${comparison.projectId} must compile the baseline from its selected source revision.`,
+        `New-version artifact comparison ${comparison.projectId} must plan the baseline from the head source.`,
       );
     }
     if (

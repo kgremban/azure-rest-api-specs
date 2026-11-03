@@ -60,6 +60,8 @@ type InternalSemanticUnit = import("./runtime-types.ts").InternalSemanticUnit;
 
 type PreparationManifest = import("./runtime-types.ts").PreparationManifest;
 
+type PreparationBlocker = import("./runtime-types.ts").PreparationBlocker;
+
 type SemanticAnalysis = import("./runtime-types.ts").SemanticAnalysis;
 
 type SourceChange = import("./runtime-types.ts").SourceChange;
@@ -1071,7 +1073,15 @@ function deterministicCoverage({
     const restCandidateIds = [...new Set(restByHunk.get(hunkId) ?? [])].sort();
     const downstreamCandidateIds = [...new Set(downstreamByHunk.get(hunkId) ?? [])].sort();
     const source = sourceForHunk(unit, sourceChanges, hunkId);
-    if (rest.status === "blocked" || downstream.status === "blocked") {
+    const projectIds = new Set(unit.projectIds ?? (unit.projectId ? [unit.projectId] : []));
+    const projectBlocked = (blockers: PreparationBlocker[]) =>
+      blockers.some((blocker) => blocker.projectId && projectIds.has(blocker.projectId));
+    if (
+      rest.status === "blocked" ||
+      downstream.status === "blocked" ||
+      projectBlocked(rest.blockers) ||
+      projectBlocked(downstream.blockers)
+    ) {
       return {
         hunkId,
         status: "blocked",

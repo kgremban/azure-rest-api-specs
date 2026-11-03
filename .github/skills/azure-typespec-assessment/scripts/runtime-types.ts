@@ -987,6 +987,11 @@ export interface ArtifactComparison {
   mode?: string;
   baseline: ArtifactSelection;
   target: ArtifactSelection;
+  baselineAvailability?: {
+    status: "available" | "unavailable";
+    reason?: "not-projectable-from-head";
+    message?: string;
+  };
   addedCurrentVersions: string[];
   available: { base: string[]; current: string[] };
 }
@@ -1031,7 +1036,13 @@ export interface PreparationManifest {
     };
     [key: string]: unknown;
   };
-  sparseCheckout: { mode: string; roots: string[]; verified: boolean };
+  sparseCheckout: {
+    mode: string;
+    roots: string[];
+    supportRoots?: string[];
+    workspaceRoots?: string[];
+    verified: boolean;
+  };
   changedFiles: ChangedFile[];
   projects: PreparationProject[];
   blockers: PreparationBlocker[];
@@ -1112,6 +1123,7 @@ export interface BreakingCandidate {
 export interface BreakingAnalysis {
   schemaVersion: number;
   status: "ready" | "blocked";
+  analyzedProjectIds?: string[];
   facts: Record<string, AssessmentFact>;
   candidates: BreakingCandidate[];
   blockers: PreparationBlocker[];
@@ -1161,6 +1173,7 @@ export interface DownstreamRootCause {
 export interface DownstreamAnalysis {
   schemaVersion: number;
   status: "ready" | "blocked";
+  analyzedProjectIds?: string[];
   facts: Record<string, AssessmentFact>;
   rootCauses: DownstreamRootCause[];
   candidates: DownstreamCandidate[];
@@ -1724,6 +1737,7 @@ export interface AssessmentOutput {
     mode?: string;
     baseline?: ArtifactSelection;
     target?: ArtifactSelection;
+    baselineAvailability?: ArtifactComparison["baselineAvailability"];
   }[];
   confidence: "high" | "medium" | "low";
   safety: {

@@ -265,6 +265,90 @@ void test("new projects derive semantic intent from target artifacts only", (con
   );
 });
 
+void test("existing projects retain source semantics with target-only artifacts", (context) => {
+  const workRoot = fs.mkdtempSync(path.join(process.cwd(), ".semantic-blocked-baseline-"));
+  context.onTestFinished(() => fs.rmSync(workRoot, { recursive: true, force: true }));
+  writeJson(path.join(workRoot, "target.json"), {
+    swagger: "2.0",
+    info: { title: "Widgets", version: "2026-10-01-preview" },
+    paths: {
+      "/widgets": {
+        get: {
+          operationId: "Widgets_List",
+          responses: { 200: { description: "ok" } },
+        },
+      },
+    },
+  });
+
+  const result = analyzeFixture({
+    workRoot,
+    manifest: {
+      projects: [
+        {
+          id: "project-existing",
+          classification: "existing",
+          sourceChangeIds: ["source-existing"],
+          artifactComparison: {
+            mode: "new-api-version",
+            baseline: {
+              sourceRevision: "current",
+              apiVersion: "2026-05-01-preview",
+              reason: "previous-latest-preview",
+            },
+            target: {
+              sourceRevision: "current",
+              apiVersion: "2026-10-01-preview",
+              reason: "newest-added-version",
+            },
+            baselineAvailability: {
+              status: "unavailable",
+              reason: "not-projectable-from-head",
+            },
+          },
+          artifacts: {
+            target: {
+              autorest: artifact("target.json"),
+            },
+          },
+        },
+      ],
+    },
+    sourceIndex: {
+      sourceChanges: [
+        {
+          id: "source-existing",
+          path: "specification/widgets/main.tsp",
+          status: "modified",
+          hunks: [{ id: "hunk-existing", lines: ["+op list(): Widget[];"] }],
+          declarations: [
+            {
+              id: "declaration-existing-base",
+              kind: "operation",
+              qualifiedName: "Widgets.list",
+              hunkIds: ["hunk-existing"],
+              source: { revision: "base" },
+            },
+            {
+              id: "declaration-existing",
+              kind: "operation",
+              qualifiedName: "Widgets.list",
+              hunkIds: ["hunk-existing"],
+              source: { revision: "current" },
+            },
+          ],
+        },
+      ],
+    },
+  });
+
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.blockers, []);
+  assert.equal(result.reviewUnits[0].action, "modify");
+  assert.deepEqual(result.reviewUnits[0].beforeFactIds, []);
+  assert.equal(result.reviewUnits[0].afterFactIds.length, 1);
+});
+
 function assertInternalSemanticUnits(value: unknown): asserts value is InternalSemanticUnit[] {
   assert.ok(Array.isArray(value));
 }

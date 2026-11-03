@@ -4,6 +4,48 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { analyzeDownstreamBreaking } from "../scripts/analyze-downstream-breaking.ts";
 
+void test("blocks cross-commit downstream comparison when the head cannot project the baseline", () => {
+  const result = analyzeDownstreamBreaking({
+    manifest: {
+      projects: [
+        {
+          id: "project-existing",
+          classification: "existing",
+          sourceChangeIds: ["source-existing"],
+          artifacts: {},
+          artifactComparison: {
+            mode: "new-api-version",
+            baseline: {
+              sourceRevision: "current",
+              commit: "head",
+              apiVersion: "2026-05-01-preview",
+              reason: "previous-latest-preview",
+            },
+            target: {
+              sourceRevision: "current",
+              commit: "head",
+              apiVersion: "2026-10-01-preview",
+              reason: "newest-added-version",
+            },
+            baselineAvailability: {
+              status: "unavailable",
+              reason: "not-projectable-from-head",
+              message:
+                "Historical API version 2026-05-01-preview cannot be projected from the head revision; cross-commit comparison was not performed.",
+            },
+          },
+        },
+      ],
+    },
+    sourceIndex: { sourceChanges: [] },
+  } as unknown as Parameters<typeof analyzeDownstreamBreaking>[0]);
+
+  assert.equal(result.status, "blocked");
+  assert.deepEqual(result.candidates, []);
+  assert.equal(result.blockers[0].code, "historical-baseline-not-projectable-from-head");
+  assert.match(result.blockers[0].message, /cross-commit comparison was not performed/);
+});
+
 function packageShape(current: boolean) {
   const stringType = { kind: "string" };
   const widgetType = {

@@ -87,3 +87,21 @@ dimension analyzers against different inputs. Stop on the coordinator's
 no-change result. If every active dimension is blocked, preserve the blocked
 `not-assessed` result without Agent judgment. If only some are blocked, judge
 ready items and retain every blocker reason.
+
+Sparse compilation worktrees include the selected service analysis roots plus
+`eng/typespec-rulesets`, so pnpm resolves the repository workspace package from
+the base or head revision being compiled. The support root is checkout-only:
+change discovery, project discovery, local-import boundaries, Semantic intent
+scope, and reported `changedFiles` remain restricted to the selected service
+roots.
+
+For a new API version, plan the normal comparison as
+`head @ previousVersion -> head @ targetVersion`. If the historical version is
+not projectable from head, preserve the existing-project classification,
+`new-api-version` mode, and both planned versions with
+`baselineAvailability.reason: not-projectable-from-head`. Reuse the new-project
+target-only compiler path for `head @ targetVersion`, but do not adopt
+new-project compatibility semantics or compare against a base-revision
+projection. Continue Semantic intents, Azure Guidelines, and Documentation
+Completeness; block only REST, downstream SDK impact, and safety with the
+explicit no-cross-commit reason.

@@ -137,6 +137,48 @@ void test("new projects are complete and non-breaking without baseline artifacts
   assert.deepEqual(result.blockers, []);
 });
 
+void test("blocks cross-commit REST comparison when the head cannot project the baseline", () => {
+  const result = analyzeRestBreaking({
+    manifest: {
+      projects: [
+        {
+          id: "project-existing",
+          classification: "existing",
+          sourceChangeIds: ["source-existing"],
+          artifacts: {},
+          artifactComparison: {
+            mode: "new-api-version",
+            baseline: {
+              sourceRevision: "current",
+              commit: "head",
+              apiVersion: "2026-05-01-preview",
+              reason: "previous-latest-preview",
+            },
+            target: {
+              sourceRevision: "current",
+              commit: "head",
+              apiVersion: "2026-10-01-preview",
+              reason: "newest-added-version",
+            },
+            baselineAvailability: {
+              status: "unavailable",
+              reason: "not-projectable-from-head",
+              message:
+                "Historical API version 2026-05-01-preview cannot be projected from the head revision; cross-commit comparison was not performed.",
+            },
+          },
+        },
+      ],
+    },
+    sourceIndex: { sourceChanges: [] },
+  } as unknown as Parameters<typeof analyzeRestBreaking>[0]);
+
+  assert.equal(result.status, "blocked");
+  assert.deepEqual(result.candidates, []);
+  assert.equal(result.blockers[0].code, "historical-baseline-not-projectable-from-head");
+  assert.match(result.blockers[0].message, /cross-commit comparison was not performed/);
+});
+
 void test("ignores PR 43308-style string format annotations across intersected response models", (context) => {
   const work = fs.mkdtempSync(path.join(process.cwd(), ".rest-format-test-"));
   context.onTestFinished(() => fs.rmSync(work, { recursive: true, force: true }));

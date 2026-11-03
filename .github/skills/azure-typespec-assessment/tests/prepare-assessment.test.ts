@@ -187,6 +187,72 @@ void test("new projects resolve and compile only the target", () => {
   assert.equal(blockers.length, 0);
 });
 
+void test("existing projects compile only the target when the head cannot project the baseline", () => {
+  const compilerCalls: string[] = [];
+  const records = prepareProjectRecords({
+    projects: ["specification/existing/Widget"],
+    sourceIndex: {
+      sourceChanges: [
+        {
+          id: "source-existing",
+          path: "specification/existing/Widget/main.tsp",
+        },
+      ],
+    } as unknown as SourceIndex,
+    blockers: [],
+    baseWorktree: "base",
+    currentWorktree: "current",
+    baseCommit: "base-sha",
+    headCommit: "head-sha",
+    workRoot: "work",
+    resolveApiVersions: () => ({
+      mode: "new-api-version",
+      baseline: {
+        sourceRevision: "current",
+        commit: "head-sha",
+        apiVersion: "2026-05-01-preview",
+        reason: "previous-latest-preview",
+      },
+      target: {
+        sourceRevision: "current",
+        commit: "head-sha",
+        apiVersion: "2026-10-01-preview",
+        reason: "newest-added-version",
+      },
+      baselineAvailability: {
+        status: "unavailable",
+        reason: "not-projectable-from-head",
+        message:
+          "Historical API version 2026-05-01-preview cannot be projected from the head revision; cross-commit comparison was not performed.",
+      },
+      base: "2026-05-01-preview",
+      current: "2026-10-01-preview",
+      baseReason: "previous-latest-preview",
+      currentReason: "new-version-added",
+      addedCurrentVersions: ["2026-10-01-preview"],
+      available: {
+        base: ["2026-05-01-preview"],
+        current: ["2026-10-01-preview"],
+      },
+    }),
+    runCompilers: ({ comparisonRole }) => {
+      compilerCalls.push(comparisonRole);
+      return {
+        autorest: { status: "succeeded" },
+        tcgc: { status: "succeeded" },
+      } as unknown as ReturnType<
+        NonNullable<Parameters<typeof prepareProjectRecords>[0]["runCompilers"]>
+      >;
+    },
+  });
+
+  assert.deepEqual(compilerCalls, ["target"]);
+  assert.equal(records[0].classification, "existing");
+  assert.equal(records[0].artifactComparison?.mode, "new-api-version");
+  assert.equal(records[0].artifactComparison?.baselineAvailability?.status, "unavailable");
+  assert.equal(records[0].artifacts.baseline, undefined);
+});
+
 void test("mixed changes compare existing projects and classify only target-only projects", () => {
   const projects = ["specification/existing/Widget", "specification/new/Gadget"];
   const compilerCalls: string[] = [];

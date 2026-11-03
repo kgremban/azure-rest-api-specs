@@ -799,6 +799,10 @@ void test("renderer labels active Azure Guidelines and scoped safety", () => {
           apiVersion: "2025-09-01",
           reason: "newest-current-version",
         },
+        baselineAvailability: {
+          status: "unavailable",
+          reason: "not-projectable-from-head",
+        },
       },
       {
         projectId: "existing-version",
@@ -844,6 +848,7 @@ void test("renderer labels active Azure Guidelines and scoped safety", () => {
   });
   assert.match(html, /Azure Guidelines/);
   assert.match(html, /Documentation Completeness/);
+  assert.match(html, /not-projectable-from-head/);
   assert.match(html, /class="eyebrow">TypeSpec Assessment/);
   assert.match(html, /class="summary-grid"/);
   assert.match(html, /<a class="summary-card" href="#rest-breaking">/);

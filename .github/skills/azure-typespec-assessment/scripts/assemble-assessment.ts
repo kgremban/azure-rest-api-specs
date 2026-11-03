@@ -1232,7 +1232,7 @@ export function assembleAssessment({
         rest.blockers.length > 0 ||
         inferenceBlockers.some((blocker) => blocker.allowedDimensions.includes("rest")),
       restFindings,
-      restFindings.length + rejectedRestCandidateCount,
+      restFindings.length + rejectedRestCandidateCount + (rest.analyzedProjectIds?.length ?? 0),
     ),
     findings: restFindings,
     rejectedCandidateCount: rejectedRestCandidateCount,
@@ -1250,7 +1250,9 @@ export function assembleAssessment({
         downstream.blockers.length > 0 ||
         inferenceBlockers.some((blocker) => blocker.allowedDimensions.includes("downstream")),
       downstreamFindings,
-      downstreamFindings.length + rejectedDownstreamCandidateCount,
+      downstreamFindings.length +
+        rejectedDownstreamCandidateCount +
+        (downstream.analyzedProjectIds?.length ?? 0),
     ),
     findings: downstreamFindings,
     methodGroups: downstreamAggregation.methodGroups,
