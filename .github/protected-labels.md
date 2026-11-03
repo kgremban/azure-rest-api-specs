@@ -5,9 +5,10 @@ Protected labels can be applied only by their configured approvers.
 ## How it works
 
 1. `.github/protected-labels.yml` maps labels to authorized GitHub users or teams.
-2. The Azure SDK Automation App handles `pull_request.labeled` events for PRs targeting `main`.
+2. The Azure SDK Automation App handles `pull_request.labeled` and `pull_request.unlabeled` events for PRs targeting `main`.
 3. The App reads policy from the PR's immutable base commit.
 4. If an unauthorized user applies a protected label, the App removes it and posts a warning.
+5. If an unauthorized user removes an explicitly removal-protected label, the App restores it and upserts a warning.
 
 Warning comments mention the unauthorized actor and direct them to the **Next Steps to Merge**
 comment and the [review and merge process](https://aka.ms/azsdk/specreview/merge).
@@ -104,12 +105,42 @@ The ARM signoff, suppression, and validation policies leave data-plane behavior 
 policy on data-plane PRs; the other ARM policies explicitly opt data-plane PRs out.
 `WaitForARMFeedback` and `ARMChangesRequested` remain unprotected.
 
-Protection applies to label application, not removal.
+The approval policies above protect label application only.
+
+## Removal protection
+
+The separate `removal-protected-labels` map opts labels into removal protection.
+It accepts the same user, team, and plane-aware policies as addition protection:
+
+```yaml
+removal-protected-labels:
+  BreakingChangeReviewRequired:
+    team: arm-breaking-change-reviewers
+```
+
+`BreakingChangeReviewRequired` is removal-protected on both API planes. Anyone
+may still add it to request review. Members of `arm-breaking-change-reviewers`,
+global approvers, and trusted automation may remove it. Existing approval labels
+are not automatically removal-protected.
+
+Before restoring a label, the App checks the current PR state and latest label
+transition so a delayed event does not undo a later different actor's removal.
+Plane-aware removal authorization uses current PR labels. Already-restored labels
+are skipped, and warnings update the App's existing comment for that label.
+Unverifiable policy, team membership, or label history fails before mutation.
+
+Package-name label removal stays with its existing GitHub Actions workflow,
+not this generic removal policy.
+
+Deploy App support for `removal-protected-labels` before merging a configuration
+that uses it. Restoration is asynchronous and does not provide an atomic merge
+gate or a required blocking status.
 
 ## Security Model
 
 - **Approver allowlist** - only users listed in the YAML can apply protected labels
 - **Unauthorized label reversal** - if an unauthorized user applies a protected label, the bot removes it and posts a warning
+- **Explicit removal protection** - the App restores configured requirement labels removed by unauthorized actors
 - **Base branch config** - the YAML is always read from the base branch (not the PR branch) to prevent self-authorization via config changes
 
 ## Adopting

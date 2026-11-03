@@ -1,6 +1,8 @@
 # Protected Labels Configuration
 # This file defines which labels can only be applied by authorized users.
 # If an unauthorized user applies a protected label, the bot removes it.
+# Removal protection is separate and opt-in through `removal-protected-labels`.
+# Unauthorized removal of those labels is restored by the Automation App.
 #
 # The problem: service teams self-applying "Approved" labels to bypass architect review.
 # This workflow ensures only authorized reviewers can sign off via labels.
@@ -76,6 +78,11 @@ Versioning-Approved-BranchPolicyException: *arm-breaking-change-policy
 Versioning-Approved-Previously: *arm-breaking-change-policy
 Versioning-Approved-Retired: *arm-breaking-change-policy
 Versioning-Approved-NotReleased: *arm-breaking-change-policy
+
+# Anyone may request review. Only the existing breaking-change reviewers,
+# global approvers, or trusted automation may clear this requirement.
+removal-protected-labels:
+  BreakingChangeReviewRequired: *arm-breaking-change-policy
 
 # Package name approval labels (plane-aware)
 package-name-dotnet-approved:
