@@ -417,6 +417,8 @@ Version-aware REST classification:
   Do not invoke compatibility inference or infer no-impact from absent before
   facts. Preserve source-derived modifications and removals, and do not render
   Before/After contract tables for target-only operation facts.
+  Informational publication summaries must not count historical carry-forward
+  when only target evidence is available.
   Azure Guidelines and compiler-driven Documentation Completeness continue.
 - For an entirely skipped scope, REST/downstream and safety remain
   `not-assessed / unknown / blocked`, never compatible or safe. Mixed scopes

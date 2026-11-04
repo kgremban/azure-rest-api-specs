@@ -1138,8 +1138,12 @@ export function assembleAssessment({
     answer.semanticIntents.map((intent) => [intent.reviewUnitId, intent]),
   );
   const semanticIntentAnswers = semantic.reviewUnits.map((unit) => {
+    const targetOnly = (unit.projectIds ?? [unit.projectId]).some((id) => {
+      const project = projectsById.get(id);
+      return project !== undefined && usesTargetOnlyArtifacts(project);
+    });
     const intent = informationalSemanticIntentIds.has(unit.id)
-      ? informationalIntentText(unit)
+      ? informationalIntentText(unit, !targetOnly)
       : authoredSemanticIntents.get(unit.id);
     if (!intent) {
       throw new Error(`Missing authored Semantic intent ${unit.id}.`);
