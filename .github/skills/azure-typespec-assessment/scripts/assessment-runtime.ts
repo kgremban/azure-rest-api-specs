@@ -29,7 +29,6 @@ export type RuntimePhaseProvenance = {
   recordedAt: string;
   inputHashes: Record<string, string>;
   outputHashes: Record<string, string>;
-  outputVersions: Record<string, string>;
 };
 
 export class AssessmentRuntimeError extends Error {
@@ -117,18 +116,6 @@ export function verifyAssessmentRuntime(work: string, metaUrl: string): Assessme
   return actual;
 }
 
-function artifactVersions(work: string, paths: string[]): Record<string, string> {
-  return Object.fromEntries(
-    [...new Set(paths)].sort().map((relativePath) => {
-      const stat = fs.statSync(resolveWorkPath(work, relativePath));
-      return [
-        relativePath.replaceAll("\\", "/"),
-        `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`,
-      ];
-    }),
-  );
-}
-
 export function createRuntimePhaseProvenance(
   work: string,
   runtime: AssessmentRuntime,
@@ -141,8 +128,6 @@ export function createRuntimePhaseProvenance(
     recordedAt: new Date().toISOString(),
     inputHashes: hashArtifacts(work, inputs),
     outputHashes: hashArtifacts(work, outputs),
-    // Detect an uninstrumented script rewriting even byte-identical phase output.
-    outputVersions: artifactVersions(work, outputs),
   };
 }
 
@@ -172,11 +157,8 @@ export function verifyRuntimePhaseProvenance(
     !Number.isFinite(Date.parse(value.recordedAt)) ||
     !isHashMap(value.inputHashes) ||
     !isHashMap(value.outputHashes) ||
-    !isRecord(value.outputVersions) ||
-    !Object.values(value.outputVersions).every((version) => typeof version === "string") ||
     requiredOutputs.some((file) => !value.outputHashes[file]) ||
-    (phase === "materialization" && !value.inputHashes[AGENT_INDEX_FILE]) ||
-    Object.keys(value.outputHashes).some((file) => !value.outputVersions[file])
+    (phase === "materialization" && !value.inputHashes[AGENT_INDEX_FILE])
   ) {
     throw new AssessmentRuntimeError(
       `Missing or unsupported successful ${phase} runtime provenance. ` +
@@ -190,14 +172,6 @@ export function verifyRuntimePhaseProvenance(
       ...verifyArtifactHashes(work, value.inputHashes),
       ...verifyArtifactHashes(work, value.outputHashes),
     ];
-    if (!errors.length) {
-      const versions = artifactVersions(work, Object.keys(value.outputHashes));
-      errors.push(
-        ...Object.keys(versions)
-          .filter((file) => versions[file] !== value.outputVersions[file])
-          .map((file) => `Artifact was rewritten after ${phase}: ${file}.`),
-      );
-    }
   } catch (error) {
     throw new AssessmentRuntimeError(
       `Invalid ${phase} runtime provenance: ${error instanceof Error ? error.message : String(error)}`,

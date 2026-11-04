@@ -364,19 +364,35 @@ void test("finalization rejects output or decisions changed after successful mat
   }
 });
 
-void test("finalization rejects even byte-identical output rewritten by an unrecorded script", () => {
+void test("materialization accepts timestamp-only changes to the prepared index", () => {
+  const work = fixture();
+  try {
+    const indexPath = path.join(work, "agent-workspace", "agent-index.json");
+    const index = fs.readFileSync(indexPath);
+    const later = new Date(Date.now() + 2_000);
+    fs.utimesSync(indexPath, later, later);
+    assert.deepEqual(fs.readFileSync(indexPath), index);
+    materializeAssessmentResults({ work });
+    assert.ok(fs.existsSync(finalizeAssessment({ work }).assessmentPath));
+  } finally {
+    fs.rmSync(work, { recursive: true, force: true });
+  }
+});
+
+void test("finalization accepts byte-identical output replacement and timestamp changes", () => {
   const work = fixture();
   try {
     const judgmentPath = path.join(work, "assessment-judgment.json");
     const judgment = fs.readFileSync(judgmentPath);
-    fs.writeFileSync(judgmentPath, judgment);
+    const replacementPath = path.join(work, "replacement.json");
+    fs.writeFileSync(replacementPath, judgment);
+    fs.renameSync(replacementPath, judgmentPath);
     const later = new Date(Date.now() + 2_000);
     fs.utimesSync(judgmentPath, later, later);
-    assert.throws(
-      () => finalizeAssessment({ work }),
-      /Artifact was rewritten after materialization: assessment-judgment.json/,
-    );
-    assert.equal(fs.existsSync(path.join(work, "assessment.json")), false);
+    assert.deepEqual(fs.readFileSync(judgmentPath), judgment);
+    const result = finalizeAssessment({ work });
+    assert.ok(fs.existsSync(result.assessmentPath));
+    assert.ok(fs.existsSync(result.reportPath));
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }
