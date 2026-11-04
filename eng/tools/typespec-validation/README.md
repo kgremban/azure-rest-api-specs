@@ -6,8 +6,10 @@ Run from the repository root after installing dependencies with `pnpm install`:
 pnpm tsv --help
 pnpm tsv specification/<service>/<project>
 pnpm tsv --all
+pnpm tsv --all --concurrency=2
 pnpm tsv --all specification/<service> --shard=1/3
 pnpm tsv --changed
+pnpm tsv --changed --concurrency=2
 pnpm tsv --changed --base=origin/main --head=HEAD --dry-run
 ```
 
@@ -111,7 +113,7 @@ checkout of `--head`. Uncommitted changes do not affect project selection.
 For changes under `specification/<service>/`, it discovers every project in that
 service folder, including sibling and nested projects. Deleted files still select
 their service when it exists; deleted service folders are skipped. Projects are
-deduplicated, sorted, and validated sequentially.
+deduplicated and sorted before validation.
 
 Changes to core tooling, root configuration, shared common types, or the root
 suppression file trigger all-project validation. Skill files under `.github/skills/`,
@@ -131,10 +133,21 @@ an empty all-project selection fails.
 and balances the sorted project list before suppressions. Each shard requires
 its own checkout.
 
+`--concurrency=<count>` controls the maximum number of project processes for
+`--all` and `--changed`. It accepts a positive safe integer and defaults to `1`
+locally. In GitHub Actions (`GITHUB_ACTIONS=true`), both modes default to twice
+Node's `os.availableParallelism()` (for example, `8` processes on a 4-CPU runner).
+An explicit `--concurrency` overrides either default.
+Sibling projects can run concurrently in the same checkout. Each project's
+output stays in one group, printed when it completes; final failure lists remain
+in discovery order. Validation failures do not stop other projects. Process
+launch errors, unexpected termination, or interruption stop scheduling and
+terminate active children.
+
 `--dry-run` lists the selected projects and context without validating or changing
 files. It works with `--all` and `--changed`.
 
-Batch validation is check-only. It compares
+Batch validation is check-only, including with concurrency `1`. It compares
 emitted contents with the checkout and checks formatting without saving files
 or creating output directories. Findings list affected files and commands to fix
 them. Ignored untracked outputs are not treated as missing generated files;

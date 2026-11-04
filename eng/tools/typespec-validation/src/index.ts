@@ -3,6 +3,7 @@ import { ConsoleLogger, type ILogger } from "@azure-tools/specs-shared/logger";
 import { type Suppression } from "@azure-tools/suppressions";
 import debug from "debug";
 import { stat } from "node:fs/promises";
+import { availableParallelism } from "node:os";
 import { resolve } from "pathe";
 import {
   exceptionDiagnostic,
@@ -202,6 +203,14 @@ export async function main({ checkOnly = false }: { checkOnly?: boolean } = {}) 
         "Require a clean checkout, including untracked files, once before validation. " +
         "Does not restore or delete files; ignored files are retained.",
     },
+    concurrency: {
+      type: "string",
+      valueLabel: "<count>",
+      group: "Options for --all or --changed",
+      description:
+        "Maximum concurrent project processes (positive integer). " +
+        "Defaults to twice the available CPUs in GitHub Actions, or 1 locally.",
+    },
   } satisfies Record<string, CliOption>;
   const parsedArgs = parseArgsWithHelp({ args, options, allowPositionals: true, help });
   if (!parsedArgs) return;
@@ -218,6 +227,20 @@ export async function main({ checkOnly = false }: { checkOnly?: boolean } = {}) 
   }
   if ((values["git-clean"] || values["dry-run"]) && !values.all && !values.changed) {
     console.error("--git-clean and --dry-run require --all or --changed");
+    process.exitCode = 1;
+    return;
+  }
+  if (values.concurrency !== undefined && !values.all && !values.changed) {
+    console.error("--concurrency requires --all or --changed");
+    process.exitCode = 1;
+    return;
+  }
+  const concurrencyOption =
+    values.concurrency ??
+    String(process.env.GITHUB_ACTIONS === "true" ? availableParallelism() * 2 : 1);
+  const concurrency = Number(concurrencyOption);
+  if (!/^[1-9]\d*$/.test(concurrencyOption) || !Number.isSafeInteger(concurrency)) {
+    console.error("--concurrency must be a positive safe integer");
     process.exitCode = 1;
     return;
   }
@@ -250,7 +273,7 @@ export async function main({ checkOnly = false }: { checkOnly?: boolean } = {}) 
   if (values.changed) {
     if (parsedArgs.positionals.length > 0) {
       console.error(
-        "Usage: tsv --changed [--base=<commit>] [--head=<commit>] [--ignore-core-files] [--git-clean] [--dry-run]",
+        "Usage: tsv --changed [--base=<commit>] [--head=<commit>] [--ignore-core-files] [--concurrency=<count>] [--git-clean] [--dry-run]",
       );
       process.exitCode = 1;
       return;
@@ -262,6 +285,7 @@ export async function main({ checkOnly = false }: { checkOnly?: boolean } = {}) 
       gitClean: values["git-clean"],
       dryRun: values["dry-run"],
       verbose: values.verbose,
+      concurrency,
     });
     if (!success) process.exitCode = 1;
     return;
@@ -270,7 +294,7 @@ export async function main({ checkOnly = false }: { checkOnly?: boolean } = {}) 
   if (values.all) {
     if (parsedArgs.positionals.length > 1) {
       console.error(
-        "Usage: tsv --all [folder] [--shard=<index>/<count>] [--github-summary] [--git-clean] [--dry-run]",
+        "Usage: tsv --all [folder] [--shard=<index>/<count>] [--github-summary] [--concurrency=<count>] [--git-clean] [--dry-run]",
       );
       process.exitCode = 1;
       return;
@@ -281,6 +305,7 @@ export async function main({ checkOnly = false }: { checkOnly?: boolean } = {}) 
       dryRun: values["dry-run"],
       verbose: values.verbose,
       summaryFile,
+      concurrency,
     });
     if (!success) process.exitCode = 1;
     return;
