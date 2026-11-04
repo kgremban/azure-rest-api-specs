@@ -180,8 +180,8 @@ function referenceName(raw: unknown) {
   return value.crossLanguageDefinitionId ?? value.name;
 }
 
-function provenanceKey(crossLanguageDefinitionId: unknown, name: unknown) {
-  return `${String(crossLanguageDefinitionId ?? "")}\0${String(name ?? "")}`;
+function provenanceKey(crossLanguageDefinitionId?: string, name?: string) {
+  return `${crossLanguageDefinitionId ?? ""}\0${name ?? ""}`;
 }
 
 function concreteReferenceName(raw: unknown, context: TcgcContext) {
