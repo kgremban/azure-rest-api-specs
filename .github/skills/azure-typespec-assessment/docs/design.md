@@ -425,9 +425,14 @@ Version-aware REST classification:
   retain other projects' findings and use partial coverage, including when a
   passing comparison generated no candidates. Validation rejects compatibility
   findings owned by skipped projects and inconsistent policy/baseline metadata.
-  The existing REST and downstream report headings show only a small muted
+  The existing REST and downstream top summary cards and detailed sections use
+  the same small muted
   `Not assessed: breaking changes are evaluated against a stable API version, but none is available.`
-  line. Do not add a policy card, panel, badge, or separate safety explanation.
+  line instead of generic unknown/blocked lines for this policy only. Summary
+  cards retain their normal findings count; detailed sections contain only the
+  heading and sentence. Other blockers and mixed-project summary cards retain
+  normal verdict/coverage presentation. Do not add a policy card, panel, badge,
+  or separate safety explanation.
   Project details remain in the existing appendix.
 - In `new-api-version` mode, baseline-to-target wire differences describe
   cross-version migration compatibility between the selected previous and new

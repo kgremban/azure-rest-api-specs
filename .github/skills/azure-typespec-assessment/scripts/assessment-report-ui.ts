@@ -1,5 +1,9 @@
 import { isDeepStrictEqual } from "node:util";
-import { NO_STABLE_API_VERSION_REPORT, skipsCompatibility } from "./compatibility-policy.ts";
+import {
+  NO_STABLE_API_VERSION_REPORT,
+  skipsAllCompatibility,
+  skipsCompatibility,
+} from "./compatibility-policy.ts";
 import { DOCUMENT_QUALITY_CRITERION } from "./document-quality-input.ts";
 import { semanticGroupingPresentation } from "./semantic-assessment-scope.ts";
 
@@ -1739,9 +1743,7 @@ export function renderReportSections(
   const downstreamCount =
     downstream.methods.length + downstream.unmapped.length + legacyDownstream.length;
   const skippedComparisons = (assessment.artifactComparisons ?? []).filter(skipsCompatibility);
-  const allCompatibilitySkipped =
-    skippedComparisons.length > 0 &&
-    skippedComparisons.length === (assessment.artifactComparisons ?? []).length;
+  const allCompatibilitySkipped = skipsAllCompatibility(assessment.artifactComparisons);
   const skippedProjectNotes = skippedComparisons
     .map((comparison) => {
       const project = assessment.projects?.find((item) => item.id === comparison.projectId);

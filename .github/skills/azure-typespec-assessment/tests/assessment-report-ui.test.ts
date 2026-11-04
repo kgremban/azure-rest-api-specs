@@ -352,7 +352,7 @@ function assessment(
   } as unknown as AssessmentOutput;
 }
 
-void test("preview-only sections contain just the existing heading and muted explanation", () => {
+void test("preview-only summary cards and sections share the muted policy explanation", () => {
   const input = assessment();
   input.artifactComparisons = [
     {
@@ -389,6 +389,14 @@ void test("preview-only sections contain just the existing heading and muted exp
     ["rest-breaking", "REST breaking changes"],
     ["downstream-breaking", "Downstream breaking changes"],
   ]) {
+    const card = required(
+      html.match(new RegExp(`<a class="summary-card" href="#${id}">[\\s\\S]*?</a>`))?.[0],
+    );
+    assert.include(
+      card,
+      `<div class="summary-detail">${NO_STABLE_API_VERSION_REPORT}<br>0 findings</div>`,
+    );
+    assert.notMatch(card, /Verdict unknown|Coverage blocked|report-badge|report-empty/);
     const section = reportSection(html, id);
     assert.match(section, new RegExp(`<h2>${title}</h2>`));
     assert.ok(section.includes(NO_STABLE_API_VERSION_REPORT));
@@ -398,6 +406,7 @@ void test("preview-only sections contain just the existing heading and muted exp
     );
     assert.equal(section.replace(/<[^>]+>/g, "").trim(), title + NO_STABLE_API_VERSION_REPORT);
   }
+  assert.equal(html.split(NO_STABLE_API_VERSION_REPORT).length - 1, 4);
   assert.notMatch(html, /Skipped by policy|policy overview|compatibility-safety explanation/i);
   input.artifactComparisons.push({
     projectId: "stable",
@@ -420,10 +429,83 @@ void test("preview-only sections contain just the existing heading and muted exp
     dimension.coverage = "partial";
   }
   input.safety.coverage = "partial";
-  const mixed = reportSection(renderCurrentAssessmentHtml(input), "rest-breaking");
+  const mixedHtml = renderCurrentAssessmentHtml(input);
+  for (const id of ["rest-breaking", "downstream-breaking"]) {
+    const card = required(
+      mixedHtml.match(new RegExp(`<a class="summary-card" href="#${id}">[\\s\\S]*?</a>`))?.[0],
+    );
+    assert.include(card, "Verdict unknown");
+    assert.include(card, "Partial coverage");
+    assert.notInclude(card, NO_STABLE_API_VERSION_REPORT);
+  }
+  const mixed = reportSection(mixedHtml, "rest-breaking");
   assert.match(mixed, /<code>specification\/preview<\/code>/);
   assert.match(mixed, /Compatibility verdict and evidence coverage/);
 });
+
+void test.for(["missing-policy", "baseline-unavailable"])(
+  "keeps generic blocked summary cards without the no-stable policy: %s",
+  (scenario) => {
+    const input = assessment();
+    input.safety = {
+      scope: "rest-and-downstream-only",
+      status: "not-assessed",
+      verdict: "unknown",
+      coverage: "blocked",
+    };
+    for (const dimension of [input.dimensions.rest, input.dimensions.downstream]) {
+      dimension.status = "not-assessed";
+      dimension.verdict = "unknown";
+      dimension.coverage = "blocked";
+      dimension.blockers = [
+        {
+          code: "compatibility-evidence-unavailable",
+          message:
+            scenario === "baseline-unavailable"
+              ? "The historical API version cannot be projected from head; no cross-commit comparison was performed."
+              : "Required compatibility artifacts are unavailable.",
+        },
+      ];
+    }
+    if (scenario === "baseline-unavailable") {
+      input.artifactComparisons = [
+        {
+          projectId: "existing",
+          ...selectApiVersionPair({
+            base: { versioned: true, versions: ["2026-01-01"] },
+            current: { versioned: true, versions: ["2026-10-01-preview"] },
+            baseCommit: "baseline",
+            headCommit: "target",
+          }),
+        },
+      ];
+      input.projects = [
+        {
+          id: "existing",
+          path: "specification/existing",
+          classification: "existing",
+          sourceChangeIds: [],
+          artifacts: {},
+          blockers: [],
+        },
+      ];
+      assert.equal(
+        input.artifactComparisons[0]?.baselineAvailability?.reason,
+        "not-projectable-from-head",
+      );
+    }
+    const html = renderCurrentAssessmentHtml(input);
+    for (const id of ["rest-breaking", "downstream-breaking"]) {
+      const card = required(
+        html.match(new RegExp(`<a class="summary-card" href="#${id}">[\\s\\S]*?</a>`))?.[0],
+      );
+      assert.include(card, "Verdict unknown");
+      assert.include(card, "Coverage blocked");
+      assert.include(card, "0 findings");
+    }
+    assert.notInclude(html, NO_STABLE_API_VERSION_REPORT);
+  },
+);
 
 void test("renders stable semantic grouping identity, diagnostics, and evidence provenance", () => {
   const input = assessment();

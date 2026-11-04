@@ -21,6 +21,19 @@ export function skipsCompatibility(
   return comparison?.compatibilityPolicy?.action === "skip";
 }
 
+export function skipsAllCompatibility(
+  comparisons: Pick<ArtifactComparison, "compatibilityPolicy">[] = [],
+): boolean {
+  return (
+    comparisons.length > 0 &&
+    comparisons.every(
+      (comparison) =>
+        comparison.compatibilityPolicy?.action === "skip" &&
+        comparison.compatibilityPolicy.reason === "no-stable-api-version",
+    )
+  );
+}
+
 export function previewCompatibilityPolicy(
   base: string[],
   current: string[],

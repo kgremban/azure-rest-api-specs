@@ -214,8 +214,13 @@ operation facts have `comparisonAvailable: false`; they do not prove historical
 absence and must not produce Before/After contract comparisons.
 
 For an entirely policy-skipped report, retain the **REST breaking changes**
-and **Downstream breaking changes** headings with only this small muted line
-under each: `Not assessed: breaking changes are evaluated against a stable API version, but none is available.`
+and **Downstream breaking changes** headings. Their top summary cards replace
+generic verdict/coverage lines with the same small muted sentence used under
+each detailed section heading:
+`Not assessed: breaking changes are evaluated against a stable API version, but none is available.`
+Summary cards retain the normal findings count; detailed sections contain only
+their heading and this sentence. Other unknown/blocked dimensions and
+mixed-project summary cards retain their normal verdict/coverage presentation.
 Do not add policy cards, panels, skip badges, a separate safety explanation, or
 success-shaped "No breaking changes" messages. Keep project diagnostics in the
 existing appendix; mixed reports retain assessed findings and identify skipped
