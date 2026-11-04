@@ -13,6 +13,8 @@ import {
   renderAssessmentHtml as renderCurrentAssessmentHtml,
 } from "../scripts/render-assessment-html.ts";
 import { normalizeRecordedAssessment, reportSection } from "./report-test-utils.ts";
+import { selectApiVersionPair } from "../scripts/api-version-selection.ts";
+import { NO_STABLE_API_VERSION_REPORT } from "../scripts/compatibility-policy.ts";
 
 type AssessmentFact = import("../scripts/runtime-types.ts").AssessmentFact;
 
@@ -349,6 +351,79 @@ function assessment(
     provenance: {},
   } as unknown as AssessmentOutput;
 }
+
+void test("preview-only sections contain just the existing heading and muted explanation", () => {
+  const input = assessment();
+  input.artifactComparisons = [
+    {
+      projectId: "preview",
+      ...selectApiVersionPair({
+        base: { versioned: true, versions: ["2026-01-01-preview"] },
+        current: { versioned: true, versions: ["2026-01-01-preview"] },
+        headCommit: "target",
+      }),
+    },
+  ];
+  input.projects = [
+    {
+      id: "preview",
+      path: "specification/preview",
+      sourceChangeIds: [],
+      artifacts: {},
+      blockers: [],
+    },
+  ];
+  input.safety = {
+    scope: "rest-and-downstream-only",
+    status: "not-assessed",
+    verdict: "unknown",
+    coverage: "blocked",
+  };
+  for (const dimension of [input.dimensions.rest, input.dimensions.downstream]) {
+    dimension.status = "not-assessed";
+    dimension.verdict = "unknown";
+    dimension.coverage = "blocked";
+  }
+  const html = renderCurrentAssessmentHtml(input);
+  for (const [id, title] of [
+    ["rest-breaking", "REST breaking changes"],
+    ["downstream-breaking", "Downstream breaking changes"],
+  ]) {
+    const section = reportSection(html, id);
+    assert.match(section, new RegExp(`<h2>${title}</h2>`));
+    assert.ok(section.includes(NO_STABLE_API_VERSION_REPORT));
+    assert.notMatch(
+      section,
+      /report-badge|report-empty|No .*breaking changes|Verdict unknown|Compatibility verdict and evidence coverage/,
+    );
+    assert.equal(section.replace(/<[^>]+>/g, "").trim(), title + NO_STABLE_API_VERSION_REPORT);
+  }
+  assert.notMatch(html, /Skipped by policy|policy overview|compatibility-safety explanation/i);
+  input.artifactComparisons.push({
+    projectId: "stable",
+    ...selectApiVersionPair({
+      base: { versioned: true, versions: ["2026-01-01"] },
+      current: { versioned: true, versions: ["2026-01-01"] },
+      baseCommit: "baseline",
+      headCommit: "target",
+    }),
+  });
+  input.projects.push({
+    id: "stable",
+    path: "specification/stable",
+    sourceChangeIds: [],
+    artifacts: {},
+    blockers: [],
+  });
+  for (const dimension of [input.dimensions.rest, input.dimensions.downstream]) {
+    dimension.analyzedProjectIds = ["stable"];
+    dimension.coverage = "partial";
+  }
+  input.safety.coverage = "partial";
+  const mixed = reportSection(renderCurrentAssessmentHtml(input), "rest-breaking");
+  assert.match(mixed, /<code>specification\/preview<\/code>/);
+  assert.match(mixed, /Compatibility verdict and evidence coverage/);
+});
 
 void test("renders stable semantic grouping identity, diagnostics, and evidence provenance", () => {
   const input = assessment();

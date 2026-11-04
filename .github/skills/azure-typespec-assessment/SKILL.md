@@ -66,5 +66,6 @@ Do not substitute a `file:` URL or only return filesystem paths.
   project or generic-identity blocker limits coverage but does not justify
   rejecting an otherwise supported candidate.
 - Overall safety covers REST and downstream SDK impact only.
+- For a preview target, successful service-version discovery with no stable version in either base or head skips REST and downstream breaking-change assessment by policy. Compile only the head target; continue source-based Semantic intents, Azure Guidelines, and compiler-driven documentation. Do not select an earlier preview baseline or use inference to recreate the omitted comparison. Preserve policy provenance separately from baseline availability; skipped compatibility is unknown, not passed.
 - After successful materialization, run one guarded invocation of `finalize-assessment.ts --work <work-directory>`. Do not separately assemble, validate, and render. Finalization requires validated `assessment.json` and `assessment.html`; user-facing completion additionally requires the served report link described above. `model-input.json`, the Agent index, filesystem paths without the link, or a partial blocker is not completion.
 - Retain blockers as **Potential limits** in the report appendix and stop after assessment. Do not author fixes or remediate TypeSpec.

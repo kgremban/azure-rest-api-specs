@@ -1,4 +1,5 @@
 import path from "node:path";
+import { compatibilitySkipReason, skipsCompatibility } from "./compatibility-policy.ts";
 import { normalizeAutorestContract } from "./autorest-contract.ts";
 import { isMain, parseArgs, readJsonObject, runMain, writeJson } from "./cli.ts";
 import { canonicalJson, stableId } from "./stable-id.ts";
@@ -544,6 +545,10 @@ export function analyzeRestBreaking(options: {
   for (const project of [...(manifest.projects ?? [])].sort((left, right) =>
     left.id.localeCompare(right.id),
   )) {
+    if (skipsCompatibility(project.artifactComparison)) {
+      blockers.push(compatibilitySkipReason(project.id));
+      continue;
+    }
     if (project.classification === "new" || project.artifactComparison?.mode === "new-project") {
       analyzedProjectIds.push(project.id);
       continue;

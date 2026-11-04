@@ -1017,6 +1017,7 @@ export function operationContractRows(
   restFindings: AssessmentFinding[] = [],
   semanticIntentId?: string,
 ): ContractChangeRow[] {
+  if (operation.comparisonAvailable === false) return [];
   const detailedRows = restFindings
     .filter((finding) => findingMatchesOperation(finding, operation, semanticIntentId))
     .map(restContractDelta);

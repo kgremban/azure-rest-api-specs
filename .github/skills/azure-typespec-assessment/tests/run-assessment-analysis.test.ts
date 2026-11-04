@@ -1281,7 +1281,10 @@ void test("retains mapped candidates when an unrelated project blocker limits co
   assert.deepEqual(coverage.classifications[0].downstreamCandidateIds, []);
 });
 
-void test("project-scoped baseline blockers prevent inference without erasing other projects", () => {
+void test.each([
+  "historical-baseline-not-projectable-from-head",
+  "compatibility-skipped-no-stable-api-version",
+])("project-scoped %s prevents inference without erasing other projects", (reason) => {
   const input = buildModelInputFromFixture({
     manifest: {
       comparison: {
@@ -1291,7 +1294,17 @@ void test("project-scoped baseline blockers prevent inference without erasing ot
         workingTree: {},
       },
       projects: [
-        { id: "blocked", path: "specification/blocked" },
+        {
+          id: "blocked",
+          path: "specification/blocked",
+          ...(reason.startsWith("compatibility-skipped")
+            ? {
+                artifactComparison: {
+                  compatibilityPolicy: { action: "skip", reason: "no-stable-api-version" },
+                },
+              }
+            : {}),
+        },
         { id: "available", path: "specification/available" },
       ],
       blockers: [],
@@ -1301,7 +1314,7 @@ void test("project-scoped baseline blockers prevent inference without erasing ot
         {
           id: "source-blocked",
           path: "blocked.tsp",
-          hunks: [{ id: "hunk-blocked", lines: ["+op getBlocked(): Widget;"] }],
+          hunks: [{ id: "hunk-blocked", lines: ["+@@visibility(Widget, Lifecycle.Read);"] }],
           declarations: [],
         },
         {
@@ -1341,7 +1354,7 @@ void test("project-scoped baseline blockers prevent inference without erasing ot
       candidates: [],
       blockers: [
         {
-          code: "historical-baseline-not-projectable-from-head",
+          code: reason,
           projectId: "blocked",
           message: "Cross-commit comparison was not performed.",
         },
@@ -1353,7 +1366,7 @@ void test("project-scoped baseline blockers prevent inference without erasing ot
       candidates: [],
       blockers: [
         {
-          code: "historical-baseline-not-projectable-from-head",
+          code: reason,
           projectId: "blocked",
           message: "Cross-commit comparison was not performed.",
         },
@@ -1366,6 +1379,10 @@ void test("project-scoped baseline blockers prevent inference without erasing ot
   assert.equal(blocked.classifications[0].status, "blocked");
   assert.equal(input.semanticReviewUnits[0].inferenceRequired, false);
   assert.notEqual(available.classifications[0].status, "blocked");
+  assert.equal(input.complianceSearchRequests.length, 2);
+  assert.ok(
+    input.inferenceRequests.every((request) => request.reviewUnitId !== "semantic-blocked"),
+  );
 });
 
 void test("model input retains facts relevant to inference hunks", () => {

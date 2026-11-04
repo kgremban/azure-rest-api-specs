@@ -193,6 +193,34 @@ not create a blocker. `not-assessed` is reserved for missing evidence,
 retrieval failures, blocked Semantic analysis, or otherwise incomplete
 the Azure Guidelines assessment.
 
+Each newly resolved project comparison records a `compatibilityPolicy`, separate
+from `baselineAvailability`. A preview target with no stable service version in
+either successfully discovered revision records
+`{ action: "skip", reason: "no-stable-api-version" }`. Its baseline selection
+has `sourceRevision: "not-selected"` and the same reason, with no commit,
+version, or `baselineAvailability`. Preserve the target, available version sets,
+project classification, and comparison mode. Other new plans record
+`{ action: "compare" }`; legacy artifacts without a policy preserve their behavior.
+
+Policy-skipped projects emit no REST/downstream candidates, decisions, inferred
+comparisons, or findings. Their compatibility dimensions and safety remain
+`not-assessed / unknown / blocked` when no other project was compared, with
+the diagnostic `Skipped by policy: no stable API version exists for this preview-only service.`
+This is not a compiler or missing-artifact error. `analyzedProjectIds` records
+only actually assessed projects; passing or failed comparisons alongside a
+skipped project yield partial coverage. Semantic source actions, Guidelines,
+and compiler-driven documentation results remain independent. Target-only
+operation facts have `comparisonAvailable: false`; they do not prove historical
+absence and must not produce Before/After contract comparisons.
+
+For an entirely policy-skipped report, retain the **REST breaking changes**
+and **Downstream breaking changes** headings with only this small muted line
+under each: `Not assessed: breaking changes are evaluated against a stable API version, but none is available.`
+Do not add policy cards, panels, skip badges, a separate safety explanation, or
+success-shaped "No breaking changes" messages. Keep project diagnostics in the
+existing appendix; mixed reports retain assessed findings and identify skipped
+projects individually.
+
 An existing project whose planned historical `new-api-version` baseline cannot
 be projected from head remains an existing project and retains its comparison
 metadata with `baselineAvailability.reason: not-projectable-from-head`. Its

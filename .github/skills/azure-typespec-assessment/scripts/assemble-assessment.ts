@@ -3,6 +3,7 @@ import path from "node:path";
 import { deriveSafety, dimensionCompatibility } from "./assessment-display.ts";
 import { sameAutorestContract } from "./autorest-contract.ts";
 import { isMain, parseArgs, readJsonObject, runMain, writeJson } from "./cli.ts";
+import { usesTargetOnlyArtifacts } from "./compatibility-policy.ts";
 import { assembleCompliance } from "./compliance-assessment.ts";
 import {
   assembleDocumentQuality,
@@ -425,24 +426,28 @@ function changedFields(
 function operationPresentation(
   operation: InternalSemanticOperation,
   facts: Record<string, AssessmentFact>,
+  comparisonAvailable: boolean,
 ) {
   const before = operation.beforeFactId ? facts[operation.beforeFactId] : undefined;
   const after = operation.afterFactId ? facts[operation.afterFactId] : undefined;
   const current = after ?? before;
-  const changed = changedFields(before, after, [
-    "method",
-    "path",
-    "parameters",
-    "request",
-    "responses",
-    "paging",
-    "lro",
-    "consumes",
-    "produces",
-  ]);
+  const changed = comparisonAvailable
+    ? changedFields(before, after, [
+        "method",
+        "path",
+        "parameters",
+        "request",
+        "responses",
+        "paging",
+        "lro",
+        "consumes",
+        "produces",
+      ])
+    : [];
   const wireChanges = changed.filter((field) => field !== "paging");
   return {
     ...operation,
+    comparisonAvailable,
     apiVersion: current?.apiVersion,
     method: current?.method,
     path: current?.path,
@@ -450,15 +455,20 @@ function operationPresentation(
     changedAspects: changed,
     before,
     after,
-    outcome: wireChanges.length
-      ? `REST contract changed: ${wireChanges.join(", ")}.`
-      : changed.includes("paging")
-        ? "HTTP signature and represented payload contract unchanged; SDK paging metadata changed."
-        : "HTTP signature and represented payload contract unchanged.",
+    outcome: !comparisonAvailable
+      ? "Target REST representation only; compatibility was not assessed."
+      : wireChanges.length
+        ? `REST contract changed: ${wireChanges.join(", ")}.`
+        : changed.includes("paging")
+          ? "HTTP signature and represented payload contract unchanged; SDK paging metadata changed."
+          : "HTTP signature and represented payload contract unchanged.",
   };
 }
 
 function semanticAction(unit: InternalSemanticUnit, operations: PresentedOperation[]) {
+  if (operations.some((operation) => operation.comparisonAvailable === false)) {
+    return unit.action ?? unit.changeKind;
+  }
   if (
     operations.length &&
     operations.every((operation) => !operation.beforeFactId && operation.afterFactId)
@@ -1159,10 +1169,20 @@ export function assembleAssessment({
             ? undefined
             : id),
       }))
-    ).map((operation) => ({
-      ...operationPresentation(operation, semantic.facts),
-      sources: sourcesForOperation(operation, unit, sources, semantic.facts, projectsById),
-    }));
+    ).map((operation) => {
+      const factProjectIds = [operation.beforeFactId, operation.afterFactId].flatMap((id) =>
+        id && semantic.facts[id]?.projectId ? [semantic.facts[id].projectId] : [],
+      );
+      const owners = factProjectIds.length ? factProjectIds : (unit.projectIds ?? [unit.projectId]);
+      const targetOnly = owners.some((id) => {
+        const project = projectsById.get(id);
+        return project !== undefined && usesTargetOnlyArtifacts(project);
+      });
+      return {
+        ...operationPresentation(operation, semantic.facts, !targetOnly),
+        sources: sourcesForOperation(operation, unit, sources, semantic.facts, projectsById),
+      };
+    });
     const action = semanticAction(unit, operations);
     return {
       ...unit,
@@ -1235,6 +1255,7 @@ export function assembleAssessment({
       restFindings.length + rejectedRestCandidateCount + (rest.analyzedProjectIds?.length ?? 0),
     ),
     findings: restFindings,
+    analyzedProjectIds: rest.analyzedProjectIds,
     rejectedCandidateCount: rejectedRestCandidateCount,
     blockers: [
       ...rest.blockers,
@@ -1255,6 +1276,7 @@ export function assembleAssessment({
         (downstream.analyzedProjectIds?.length ?? 0),
     ),
     findings: downstreamFindings,
+    analyzedProjectIds: downstream.analyzedProjectIds,
     methodGroups: downstreamAggregation.methodGroups,
     typeImpacts: downstreamAggregation.typeImpacts,
     rootCauses: downstream.rootCauses ?? [],
